@@ -39,6 +39,16 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
+    const pg = b.dependency("pg", .{
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const myzql = b.dependency("myzql", .{
+        //.target = target,
+        //.optimize = optimize,
+    });
+
     // Modules can depend on one another using the `std.Build.Module.addImport` function.
     // This is what allows Zig source code to use `@import("foo")` where 'foo' is not a
     // file path. In this case, we set up `exe_mod` to import `lib_mod`.
@@ -53,6 +63,11 @@ pub fn build(b: *std.Build) void {
         .root_module = lib_mod,
     });
 
+    // This seems to be needed in both lib and exe
+    // so that root.zig and other files can use the modules.
+    lib.root_module.addImport("pg", pg.module("pg"));
+    lib.root_module.addImport("myzql", myzql.module("myzql"));
+
     // This declares intent for the library to be installed into the standard
     // location when the user invokes the "install" step (the default step when
     // running `zig build`).
@@ -64,6 +79,9 @@ pub fn build(b: *std.Build) void {
         .name = "migration_tool",
         .root_module = exe_mod,
     });
+
+    exe.root_module.addImport("pg", pg.module("pg"));
+    exe.root_module.addImport("myzql", myzql.module("myzql"));
 
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default

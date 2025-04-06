@@ -4,9 +4,13 @@
 const std = @import("std");
 const testing = std.testing;
 
+const pg = @import("pg");
+
 const hash = @import("hash.zig");
 const local_fs = @import("local_fs.zig");
+const Database = @import("Database.zig");
 
-pub export fn run_migrations(a: i32, b: i32) i32 {
-    return a + b;
+pub export fn run_migrations() void {
+    var db = Database{ .db = .{ .postgres = pg{} } };
+    db.open();
 }
