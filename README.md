@@ -9,7 +9,7 @@ A tool for handling migrations in Zig services.
 Install with zig-fetch--------
 
 """bash
-export DATABASE_URL=
+export DATABASE_URL=postgresql://postgres:password@localhost/loan
 """
 
 """bash

@@ -44,10 +44,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    const myzql = b.dependency("myzql", .{
-        //.target = target,
-        //.optimize = optimize,
-    });
+    const myzql = b.dependency("myzql", .{});
 
     // Modules can depend on one another using the `std.Build.Module.addImport` function.
     // This is what allows Zig source code to use `@import("foo")` where 'foo' is not a
@@ -124,6 +121,9 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+
+    exe_unit_tests.root_module.addImport("pg", pg.module("pg"));
+    exe_unit_tests.root_module.addImport("myzql", myzql.module("myzql"));
 
     const run_exe_unit_tests = b.addRunArtifact(exe_unit_tests);
 

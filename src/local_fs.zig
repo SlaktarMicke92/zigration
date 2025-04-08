@@ -30,5 +30,5 @@ test "read src" {
         std.testing.allocator.free(files);
     }
 
-    try std.testing.expect(std.mem.eql(u8, "database.zig", files[0]));
+    try std.testing.expect(std.mem.eql(u8, "Database.zig", files[0]));
 }
