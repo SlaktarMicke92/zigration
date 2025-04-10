@@ -1,8 +1,6 @@
 const std = @import("std");
 const builtin = @import("builtin");
 
-const Database = @import("Database.zig");
-
 /// run migrations
 pub fn run() void {}
 
