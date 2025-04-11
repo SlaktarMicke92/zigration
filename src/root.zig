@@ -6,8 +6,8 @@ const testing = std.testing;
 
 const pg = @import("pg");
 
-const hash = @import("hash.zig");
 const local_fs = @import("local_fs.zig");
+const consts = @import("consts.zig");
 const Database = @import("Database.zig");
 const DatabaseType = @import("Database.zig").DatabaseType;
 
@@ -51,12 +51,12 @@ pub export fn run() void {
 
     const database_uri = std.process.getEnvVarOwned(allocator, "DATABASE_URI") catch |err| {
         std.log.err("{}", .{err});
-        std.process.exit(1);
+        return;
     };
     defer allocator.free(database_uri);
 
     var db = get_database(&allocator, database_uri) catch {
-        std.process.exit(1);
+        return;
     };
     defer db.deinit();
 
@@ -64,6 +64,37 @@ pub export fn run() void {
 
     db.create() catch |err| {
         std.log.err("{}", .{err});
-        std.process.exit(1);
+        return;
     };
+
+    std.log.info("Getting migrations", .{});
+    const files = local_fs.ls(consts.MIGRATION_PATH, allocator) catch |err| {
+        std.log.err("{}", .{err});
+        return;
+    };
+    defer {
+        for (files) |v| {
+            allocator.free(v);
+        }
+        allocator.free(files);
+    }
+
+    std.log.info("Getting file contents", .{});
+
+    for (files, 0..) |file, index| {
+        std.log.info("File path: {s}", .{file});
+
+        const file_contents = local_fs.get_contents_of_file(allocator, file) catch |err| {
+            std.log.err("{}", .{err});
+            return;
+        };
+        defer allocator.free(file_contents);
+
+        db.run_migration(file_contents, index) catch |err| {
+            std.log.err("{}", .{err});
+            return;
+        };
+    }
+
+    std.log.info("Ran migrations", .{});
 }

@@ -2,6 +2,8 @@ const std = @import("std");
 const pg = @import("pg");
 const myzql = @import("myzql");
 
+const hash = @import("hash.zig");
+
 const Database = @This();
 
 pub const DatabaseType = enum {
@@ -125,7 +127,7 @@ fn commit(self: *Database) !void {
 fn execute(self: *Database, query: []const u8, values: anytype) !void {
     switch (self.db_connection) {
         .postgres => |*conn| {
-            std.log.info("Create migration table query", .{});
+            std.log.info("executing query", .{});
             _ = conn.*.exec(query, values) catch |err| {
                 if (conn.err) |pge| {
                     std.log.err("PG {s}\n", .{pge.message});
@@ -140,4 +142,56 @@ fn execute(self: *Database, query: []const u8, values: anytype) !void {
             _ = try conn.*.execute(&prep_stmt, values);
         },
     }
+}
+
+fn select_check_sum_by_sequence(self: *Database, check_sum_buffer: *[32]u8, sequence: usize) !void {
+    switch (self.db_connection) {
+        .postgres => |*conn| {
+            const result = try conn.*.query(
+                "SELECT check_sum FROM _zigration WHERE sequence = $1 LIMIT 1",
+                .{sequence},
+            );
+            defer result.deinit();
+
+            while (try result.next()) |row| {
+                const check_sum = row.get([]u8, 0);
+                @memcpy(check_sum_buffer[0..], check_sum);
+            }
+        },
+        .mariadb, .mysql => |*conn| {
+            _ = conn;
+        },
+    }
+}
+
+pub fn run_migration(self: *Database, query: []const u8, sequence: usize) !void {
+    // Take in migrations from local_fs as parameter
+    // Run every migration but first check if sequence exists in DB
+    // and make a check_sum check against it.
+    var check_sum_buffer: [32]u8 = std.mem.zeroes([32]u8);
+    try self.select_check_sum_by_sequence(
+        &check_sum_buffer,
+        sequence,
+    );
+
+    try self.begin();
+
+    try self.execute(query, .{});
+
+    // Probably need sequence number for checking against database
+
+    // No need for check_sum until query has been validated
+    const check_sum = hash.create(query);
+
+    // First if need to check if existing_check_sum even has a value
+    if (std.mem.eql(u8, &check_sum_buffer, &std.mem.zeroes([32]u8))) {
+        // Everything is fine, run migration
+    } else if (std.mem.eql(u8, &check_sum_buffer, &check_sum)) {
+        // Everything is fine, no need to run migration
+        return;
+    }
+
+    // TODO: Need to add row to _zigration for migration
+
+    try self.commit();
 }
