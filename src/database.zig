@@ -19,7 +19,8 @@ const DatabaseConnection = union(DatabaseType) {
 };
 
 pub const DatabaseError = error{
-    ConnectionError,
+    ConnectionFailed,
+    MigrationConflict,
 };
 
 db_connection: DatabaseConnection,
@@ -38,11 +39,11 @@ pub fn init(allocator: *std.mem.Allocator, db_type: DatabaseType, uri: std.Uri) 
 fn open(allocator: *std.mem.Allocator, db_type: DatabaseType, uri: std.Uri) !DatabaseConnection {
     switch (db_type) {
         .postgres => {
-            std.log.info("Opening connection with postgres", .{});
+            std.log.debug("Opening connection with postgres", .{});
             return DatabaseConnection{ .postgres = try pg.Conn.openAndAuthUri(allocator.*, uri) };
         },
         .mariadb => {
-            std.log.info("Opening connection with mariadb", .{});
+            std.log.debug("Opening connection with mariadb", .{});
             return DatabaseConnection{ .mariadb = try myzql.conn.Conn.init(allocator.*, &.{
                 .username = "sentinel-zero-string",
                 .password = "sentinel-zero-string",
@@ -51,7 +52,7 @@ fn open(allocator: *std.mem.Allocator, db_type: DatabaseType, uri: std.Uri) !Dat
             }) };
         },
         .mysql => {
-            std.log.info("Opening connection with mysql", .{});
+            std.log.debug("Opening connection with mysql", .{});
             return DatabaseConnection{ .mysql = try myzql.conn.Conn.init(allocator.*, &.{
                 .username = "sentinel-zero-string",
                 .password = "sentinel-zero-string",
@@ -77,7 +78,7 @@ pub fn create(self: *Database) !void {
         .postgres =>
         \\CREATE TABLE IF NOT EXISTS _zigration (
         \\zigration_id UUID PRIMARY KEY,
-        \\check_sum CHAR(32),
+        \\check_sum CHAR(64),
         \\sequence SERIAL,
         \\created_at DATE DEFAULT CURRENT_DATE
         \\);
@@ -85,7 +86,7 @@ pub fn create(self: *Database) !void {
         .mariadb, .mysql =>
         \\CREATE TABLE IF NOT EXISTS _zigration (
         \\zigration_id UUID
-        \\check_sum CHAR(32)
+        \\check_sum CHAR(64)
         \\sequence INT AUTO_INCREMENT
         \\created_at DATETIME DEFAULT CURRENT_DATE
         \\PRIMARY KEY zigration_id
@@ -96,14 +97,14 @@ pub fn create(self: *Database) !void {
     try self.execute(query, .{});
     try self.commit();
 
-    std.log.info("Created zigration table", .{});
+    std.log.debug("Created zigration table", .{});
 }
 
 fn begin(self: *Database) !void {
     // Start transaction
     switch (self.db_connection) {
         .postgres => |*conn| {
-            std.log.info("Begin postgres transaction", .{});
+            std.log.debug("Begin postgres transaction", .{});
             try conn.*.begin();
         },
         else => {
@@ -115,7 +116,7 @@ fn begin(self: *Database) !void {
 fn commit(self: *Database) !void {
     switch (self.db_connection) {
         .postgres => |*conn| {
-            std.log.info("Commiting transaction", .{});
+            std.log.debug("Commiting transaction", .{});
             try conn.*.commit();
         },
         else => {
@@ -127,7 +128,7 @@ fn commit(self: *Database) !void {
 fn execute(self: *Database, query: []const u8, values: anytype) !void {
     switch (self.db_connection) {
         .postgres => |*conn| {
-            std.log.info("executing query", .{});
+            std.log.debug("Executing query", .{});
             _ = conn.*.exec(query, values) catch |err| {
                 if (conn.err) |pge| {
                     std.log.err("PG {s}\n", .{pge.message});
@@ -144,6 +145,20 @@ fn execute(self: *Database, query: []const u8, values: anytype) !void {
     }
 }
 
+fn add_migration(self: *Database, check_sum: [32]u8) !void {
+    const query = switch (self.db_connection) {
+        .postgres =>
+        \\INSERT INTO _zigration (zigration_id, check_sum)
+        \\VALUES (gen_random_uuid(), $1);
+        ,
+        .mariadb, .mysql =>
+        \\
+        ,
+    };
+
+    try self.execute(query, .{&std.fmt.bytesToHex(check_sum, .upper)});
+}
+
 fn select_check_sum_by_sequence(self: *Database, check_sum_buffer: *[32]u8, sequence: usize) !void {
     switch (self.db_connection) {
         .postgres => |*conn| {
@@ -155,7 +170,7 @@ fn select_check_sum_by_sequence(self: *Database, check_sum_buffer: *[32]u8, sequ
 
             while (try result.next()) |row| {
                 const check_sum = row.get([]u8, 0);
-                @memcpy(check_sum_buffer[0..], check_sum);
+                _ = try std.fmt.hexToBytes(check_sum_buffer, check_sum);
             }
         },
         .mariadb, .mysql => |*conn| {
@@ -174,24 +189,38 @@ pub fn run_migration(self: *Database, query: []const u8, sequence: usize) !void 
         sequence,
     );
 
-    try self.begin();
-
-    try self.execute(query, .{});
-
-    // Probably need sequence number for checking against database
-
-    // No need for check_sum until query has been validated
-    const check_sum = hash.create(query);
+    var new_check_sum: [32]u8 = undefined;
+    hash.create(query, &new_check_sum);
 
     // First if need to check if existing_check_sum even has a value
     if (std.mem.eql(u8, &check_sum_buffer, &std.mem.zeroes([32]u8))) {
         // Everything is fine, run migration
-    } else if (std.mem.eql(u8, &check_sum_buffer, &check_sum)) {
+    } else if (std.mem.eql(u8, &check_sum_buffer, &new_check_sum)) {
         // Everything is fine, no need to run migration
+        std.log.info(
+            "Migration with check sum {s} already applied, skipping...",
+            .{std.fmt.bytesToHex(check_sum_buffer, .upper)},
+        );
         return;
+    } else {
+        // Check sums are different, not good
+        std.log.err(
+            "Check sums for sequence: {d} are different. Stopping migrations.",
+            .{sequence},
+        );
+        return DatabaseError.MigrationConflict;
     }
 
-    // TODO: Need to add row to _zigration for migration
+    std.log.info(
+        "Applying migration: {d}, check_sum: {s}",
+        .{ sequence, std.fmt.bytesToHex(new_check_sum, .upper) },
+    );
+
+    try self.begin();
+
+    try self.execute(query, .{});
+
+    try self.add_migration(new_check_sum);
 
     try self.commit();
 }

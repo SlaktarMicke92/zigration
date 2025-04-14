@@ -4,10 +4,8 @@ pub fn compare(a: []const u8, b: []const u8) bool {
     return std.mem.eql(u8, a, b);
 }
 
-pub fn create(value: []const u8) [32]u8 {
-    var out: [32]u8 = undefined;
-    std.crypto.hash.sha2.Sha256.hash(value, &out, .{});
-    return out;
+pub fn create(value: []const u8, out: *[32]u8) void {
+    std.crypto.hash.sha2.Sha256.hash(value, out, .{});
 }
 
 test "compare same" {

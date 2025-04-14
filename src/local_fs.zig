@@ -35,8 +35,6 @@ pub fn get_contents_of_file(allocator: std.mem.Allocator, path: []const u8) ![]u
     const buffer_size = 2000;
     const file_buffer = try file.readToEndAlloc(allocator, buffer_size);
 
-    std.log.info("{s}", .{file_buffer});
-
     return file_buffer;
 }
 

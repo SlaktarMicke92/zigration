@@ -25,13 +25,13 @@ fn get_database(allocator: *std.mem.Allocator, database_uri: []const u8) Zigrati
     var database_type: DatabaseType = undefined;
 
     if (std.mem.eql(u8, uri.scheme, "postgresql")) {
-        std.log.info("Initializing with postgres", .{});
+        std.log.debug("Initializing with postgres", .{});
         database_type = DatabaseType.postgres;
     } else if (std.mem.eql(u8, uri.scheme, "mariadb")) {
-        std.log.info("Initializing with mariadb", .{});
+        std.log.debug("Initializing with mariadb", .{});
         database_type = DatabaseType.mariadb;
     } else if (std.mem.eql(u8, uri.scheme, "mysql")) {
-        std.log.info("Initializing with mysql", .{});
+        std.log.debug("Initializing with mysql", .{});
         database_type = DatabaseType.mysql;
     } else {
         std.log.err("database type '{s}'' not supported", .{uri.scheme});
@@ -60,14 +60,14 @@ pub export fn run() void {
     };
     defer db.deinit();
 
-    std.log.info("Got database connection up", .{});
+    std.log.debug("Got database connection up", .{});
 
     db.create() catch |err| {
         std.log.err("{}", .{err});
         return;
     };
 
-    std.log.info("Getting migrations", .{});
+    std.log.debug("Getting migrations", .{});
     const files = local_fs.ls(consts.MIGRATION_PATH, allocator) catch |err| {
         std.log.err("{}", .{err});
         return;
@@ -79,10 +79,10 @@ pub export fn run() void {
         allocator.free(files);
     }
 
-    std.log.info("Getting file contents", .{});
+    std.log.debug("Getting file contents", .{});
 
     for (files, 0..) |file, index| {
-        std.log.info("File path: {s}", .{file});
+        std.log.debug("File path: {s}", .{file});
 
         const file_contents = local_fs.get_contents_of_file(allocator, file) catch |err| {
             std.log.err("{}", .{err});
@@ -90,7 +90,7 @@ pub export fn run() void {
         };
         defer allocator.free(file_contents);
 
-        db.run_migration(file_contents, index) catch |err| {
+        db.run_migration(file_contents, index + 1) catch |err| {
             std.log.err("{}", .{err});
             return;
         };
