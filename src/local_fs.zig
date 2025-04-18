@@ -39,6 +39,8 @@ pub fn get_contents_of_file(allocator: std.mem.Allocator, path: []const u8) ![]u
 }
 
 test "read src" {
+    const builtin = @import("builtin");
+
     // Get files from path
     const files = try ls("src/", std.testing.allocator);
     // Defer free memory as it has been allocated from ArrayList
@@ -49,5 +51,9 @@ test "read src" {
         std.testing.allocator.free(files);
     }
 
-    try std.testing.expect(std.mem.eql(u8, "src/consts.zig", files[0]));
+    if (builtin.target.os.tag == .linux) {
+        try std.testing.expect(std.mem.eql(u8, "src/Database.zig", files[0]));
+    } else {
+        try std.testing.expect(std.mem.eql(u8, "src/consts.zig", files[0]));
+    }
 }
