@@ -1,0 +1,24 @@
+pipelines:
+  default:
+    - step:
+        name: lint
+        trigger: automatic
+        script:
+          - /opt/zig/zig fmt --check src/
+    - step:
+        name: test
+        trigger: automatic
+        deployment: Test
+        services:
+          - postgres
+        script:
+          - /opt/zig/zig build test
+
+definitions:
+  services:
+    postgres:
+      image: postgres
+      variables:
+        POSTGRES_DB: 'loan'
+        POSTGRES_USER: 'postgres'
+        POSTGRES_PASSWORD: 'password'
