@@ -7,6 +7,8 @@ pipelines:
         script:
           - apt-get update && apt-get install -y curl xz-utils
           - curl https://ziglang.org/download/0.14.0/zig-linux-x86_64-0.14.0.tar.xz -o zig-linux.tar.xz && tar xf zig-linux.tar.xz && mv zig-linux-x86_64-0.14.0/ /opt/zig
+          - ls
+          - ls -largh src
           - /opt/zig/zig fmt --check src/
     - step:
         image: debian:bookworm

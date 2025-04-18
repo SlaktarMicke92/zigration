@@ -9,13 +9,17 @@ pub fn create(value: []const u8, out: *[32]u8) void {
 }
 
 test "compare same" {
-    const a = create("hello");
-    const b = create("hello");
+    var a: [32]u8 = undefined;
+    var b: [32]u8 = undefined;
+    create("hello", &a);
+    create("hello", &b);
     try std.testing.expect(compare(&a, &b));
 }
 
 test "compare different" {
-    const a = create("hello");
-    const b = create("world");
+    var a: [32]u8 = undefined;
+    var b: [32]u8 = undefined;
+    create("hello", &a);
+    create("world", &b);
     try std.testing.expect(!compare(&a, &b));
 }
