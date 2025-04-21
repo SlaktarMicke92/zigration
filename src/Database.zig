@@ -211,11 +211,6 @@ pub fn run_migration(self: *Database, query: []const u8, sequence: usize) !void 
         return DatabaseError.MigrationConflict;
     }
 
-    std.log.info(
-        "Applying migration: {d}, check_sum: {s}",
-        .{ sequence, std.fmt.bytesToHex(new_check_sum, .upper) },
-    );
-
     try self.begin();
 
     try self.execute(query, .{});
@@ -223,4 +218,9 @@ pub fn run_migration(self: *Database, query: []const u8, sequence: usize) !void 
     try self.add_migration(new_check_sum);
 
     try self.commit();
+
+    std.log.info(
+        "Applied migration: {d}, check_sum: {s}",
+        .{ sequence, std.fmt.bytesToHex(new_check_sum, .upper) },
+    );
 }
