@@ -1,15 +1,15 @@
 pipelines:
   default:
     - step:
-        image: debian:bookworm
+        image: debian:trixie
         name: lint
         trigger: automatic
         script:
           - apt-get update && apt-get install -y curl xz-utils
-          - curl https://ziglang.org/download/0.14.0/zig-linux-x86_64-0.14.0.tar.xz -o zig-linux.tar.xz && tar xf zig-linux.tar.xz && mv zig-linux-x86_64-0.14.0/ /opt/zig
+          - curl https://ziglang.org/download/0.15.2/zig-x86_64-linux-0.15.2.tar.xz -o zig-linux.tar.xz && tar xf zig-linux.tar.xz && mv zig-x86_64-linux-0.15.2/ /opt/zig
           - /opt/zig/zig fmt --check src/
     - step:
-        image: debian:bookworm
+        image: debian:trixie
         name: test
         trigger: automatic
         deployment: Test
@@ -17,7 +17,7 @@ pipelines:
           - postgres
         script:
           - apt-get update && apt-get install -y curl xz-utils
-          - curl https://ziglang.org/download/0.14.0/zig-linux-x86_64-0.14.0.tar.xz -o zig-linux.tar.xz && tar xf zig-linux.tar.xz && mv zig-linux-x86_64-0.14.0/ /opt/zig
+          - curl https://ziglang.org/download/0.15.2/zig-x86_64-linux-0.15.2.tar.xz -o zig-linux.tar.xz && tar xf zig-linux.tar.xz && mv zig-x86_64-linux-0.15.2/ /opt/zig
           - /opt/zig/zig build test
 
 definitions:
