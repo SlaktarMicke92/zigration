@@ -14,6 +14,7 @@ const DatabaseType = @import("Database.zig").DatabaseType;
 const ZigrationError = error{
     DatabaseUriParse,
     UnsupportedScheme,
+    DatabaseInit,
 };
 
 fn get_database(allocator: *std.mem.Allocator, database_uri: []const u8) ZigrationError!Database {
@@ -38,7 +39,9 @@ fn get_database(allocator: *std.mem.Allocator, database_uri: []const u8) Zigrati
         return ZigrationError.UnsupportedScheme;
     }
 
-    return Database.init(allocator, database_type, uri);
+    return Database.init(allocator, database_type, uri) catch {
+        return ZigrationError.DatabaseInit;
+    };
 }
 
 pub export fn run() void {

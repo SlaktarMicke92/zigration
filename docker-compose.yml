@@ -9,7 +9,7 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
-      POSTGRES_DB: loan
+      POSTGRES_DB: database
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready" ]
       interval: 1s

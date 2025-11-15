@@ -26,11 +26,11 @@ pub const DatabaseError = error{
 db_connection: DatabaseConnection,
 allocator: *std.mem.Allocator,
 
-pub fn init(allocator: *std.mem.Allocator, db_type: DatabaseType, uri: std.Uri) Database {
+pub fn init(allocator: *std.mem.Allocator, db_type: DatabaseType, uri: std.Uri) !Database {
     return Database{
         .db_connection = open(allocator, db_type, uri) catch |err| {
             std.log.err("{}", .{err});
-            std.process.exit(1);
+            return err;
         },
         .allocator = allocator,
     };
@@ -66,7 +66,7 @@ fn open(allocator: *std.mem.Allocator, db_type: DatabaseType, uri: std.Uri) !Dat
 pub fn deinit(self: *Database) void {
     switch (self.db_connection) {
         .postgres => |*conn| conn.*.deinit(),
-        .mysql, .mariadb => |*conn| conn.*.deinit(),
+        .mysql, .mariadb => |*conn| conn.*.deinit(self.allocator.*),
     }
     self.* = undefined;
 }

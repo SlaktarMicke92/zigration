@@ -37,12 +37,12 @@
     // internet connectivity.
     .dependencies = .{
         .pg = .{
-            .url = "git+https://github.com/karlseguin/pg.zig?ref=master#901c289368f0eae8e37ca90e3f806be9e3ff86f9",
-            .hash = "pg-0.0.0-Wp_7gRD-BQCbDvJEahLsdoxUdlR7BsmvPnQyYdGyQzEE",
+            .url = "git+https://github.com/karlseguin/pg.zig?ref=master#f8d4892387fbad2abdf775783e101e50a7114335",
+            .hash = "pg-0.0.0-Wp_7gag6BgD_QAZrPhNNEGpnUZR_LEkKT40Ura3p-4yX",
         },
         .myzql = .{
-            .url = "https://github.com/speed2exe/myzql/archive/refs/tags/0.14.0.tar.gz",
-            .hash = "1220ae67a7745ed89b85d457d13b2623253209d213fc6152cda9ee05ff7b2b51a962",
+            .url = "git+https://github.com/speed2exe/myzql?ref=0.15.1#d93d383e097dfc8a4431e5154874eeda4c623f60",
+            .hash = "myzql-0.0.0-XU5aAP_0AgCPYPMy61wPn8RgtS_wlJK5kRrU38taGTrY",
         },
     },
     .paths = .{

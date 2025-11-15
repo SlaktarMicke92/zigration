@@ -3,8 +3,8 @@ const std = @import("std");
 /// REMEMBER to iterate through all items in list
 /// when freeing memory, see test.
 pub fn ls(path: []const u8, allocator: std.mem.Allocator) ![][]const u8 {
-    var files = std.ArrayList([]const u8).init(allocator);
-    errdefer files.deinit();
+    var files = try std.ArrayList([]const u8).initCapacity(allocator, 255);
+    errdefer files.deinit(allocator);
 
     // Add all files names in the src folder to `files`
     var dir = try std.fs.cwd().openDir(path, .{ .iterate = true });
@@ -19,10 +19,10 @@ pub fn ls(path: []const u8, allocator: std.mem.Allocator) ![][]const u8 {
         defer allocator.free(file_with_path);
         @memcpy(file_with_path[0..path.len], path);
         @memcpy(file_with_path[path.len..], file.name);
-        try files.append(try allocator.dupe(u8, file_with_path));
+        try files.append(allocator, try allocator.dupe(u8, file_with_path));
     }
 
-    return try files.toOwnedSlice();
+    return try files.toOwnedSlice(allocator);
 }
 
 /// Get contents of file
