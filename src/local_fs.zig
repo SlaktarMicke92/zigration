@@ -8,10 +8,8 @@ fn stringLessThan(_: void, lhs: []const u8, rhs: []const u8) bool {
 /// REMEMBER to iterate through all items in list
 /// when freeing memory, see test.
 pub fn ls(path: []const u8, allocator: std.mem.Allocator) ![][]const u8 {
-    var files = try std.ArrayList([]const u8).initCapacity(allocator, 255);
+    var files = try std.ArrayList([]const u8).initCapacity(allocator, 512);
     errdefer files.deinit(allocator);
-
-    std.mem.sort([]const u8, files.items, {}, stringLessThan);
 
     // Add all files names in the src folder to `files`
     var dir = try std.fs.cwd().openDir(path, .{ .iterate = true });
@@ -28,6 +26,8 @@ pub fn ls(path: []const u8, allocator: std.mem.Allocator) ![][]const u8 {
         @memcpy(file_with_path[path.len..], file.name);
         try files.append(allocator, try allocator.dupe(u8, file_with_path));
     }
+
+    std.mem.sort([]const u8, files.items, {}, stringLessThan);
 
     return try files.toOwnedSlice(allocator);
 }
@@ -56,6 +56,6 @@ test "read src" {
         std.testing.allocator.free(files);
     }
 
-    try std.testing.expect(std.mem.eql(u8, "migrations/01_create_customer_table.sql", files[0]));
+    try std.testing.expect(std.mem.eql(u8, "migrations/01_create_customer.sql", files[0]));
     try std.testing.expect(std.mem.eql(u8, "migrations/02_insert_customer.sql", files[1]));
 }
