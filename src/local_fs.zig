@@ -1,10 +1,17 @@
 const std = @import("std");
 
+/// Used to sort strings
+fn stringLessThan(_: void, lhs: []const u8, rhs: []const u8) bool {
+    return std.mem.order(u8, lhs, rhs) == .lt;
+}
+
 /// REMEMBER to iterate through all items in list
 /// when freeing memory, see test.
 pub fn ls(path: []const u8, allocator: std.mem.Allocator) ![][]const u8 {
     var files = try std.ArrayList([]const u8).initCapacity(allocator, 255);
     errdefer files.deinit(allocator);
+
+    std.mem.sort([]const u8, files.items, {}, stringLessThan);
 
     // Add all files names in the src folder to `files`
     var dir = try std.fs.cwd().openDir(path, .{ .iterate = true });
@@ -50,4 +57,5 @@ test "read src" {
     }
 
     try std.testing.expect(std.mem.eql(u8, "migrations/01_create_customer_table.sql", files[0]));
+    try std.testing.expect(std.mem.eql(u8, "migrations/02_insert_customer.sql", files[1]));
 }
